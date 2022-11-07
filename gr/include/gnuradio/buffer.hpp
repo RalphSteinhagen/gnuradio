@@ -4,43 +4,61 @@
 #include <type_traits>
 #include <concepts>
 #include <span>
-#include <tuple>
 
 namespace gr {
 namespace util {
 template <typename T, typename...>
-struct first_template_arg;
+struct first_template_arg_helper;
 
-template <template <typename> class TemplateType, typename... ValueTypes>
-    requires(sizeof...(ValueTypes) > 0)
-struct first_template_arg<TemplateType<ValueTypes...>> {
-    using value_type = std::tuple_element_t<0, std::tuple<ValueTypes...>>;
+template <template <typename...> class TemplateType,
+          typename ValueType,
+          typename... OtherTypes>
+struct first_template_arg_helper<TemplateType<ValueType, OtherTypes...>> {
+    using value_type = ValueType;
 };
 
-template <typename TemplateType>
-using first_template_arg_v = typename first_template_arg<TemplateType>::value_type;
+template <typename T>
+constexpr auto* value_type_helper()
+{
+    if constexpr (requires { typename T::value_type; }) {
+        return static_cast<typename T::value_type*>(nullptr);
+    }
+    else {
+        return static_cast<typename first_template_arg_helper<T>::value_type*>(nullptr);
+    }
+}
+
+template <typename T>
+using value_type_t = std::remove_pointer_t<decltype(value_type_helper<T>())>;
 
 template <typename... A>
-struct test {
+struct test_fallback {
 };
 
-static_assert(std::is_same_v<first_template_arg_v<test<int, float, double>>, int>);
-static_assert(std::is_same_v<first_template_arg_v<std::tuple<int, double, float>>, int>);
+template <typename, typename ValueType>
+struct test_value_type {
+    using value_type = ValueType;
+};
+
+static_assert(std::is_same_v<int, value_type_t<test_fallback<int, float, double>>>);
+static_assert(std::is_same_v<float, value_type_t<test_value_type<int, float>>>);
+static_assert(std::is_same_v<int, value_type_t<std::span<int>>>);
+static_assert(std::is_same_v<double, value_type_t<std::array<double, 42>>>);
 } // namespace util
 
 // clang-format off
 // disable formatting until clang-format (v16) supporting concepts
 template<class T>
 concept BufferReader = requires(T /*const*/ t, const std::size_t n_items) {
-    { t.get(n_items) }     -> std::same_as<std::span<const util::first_template_arg_v<T>>>;
+    { t.get(n_items) }     -> std::same_as<std::span<const util::value_type_t<T>>>;
     { t.consume(n_items) } -> std::same_as<bool>;
     { t.available() }      -> std::same_as<std::size_t>;
 };
 
 template<class T, typename ...Args>
 concept BufferWriter = requires(T t, const std::size_t n_items, Args ...args) {
-    { t.publish([](std::span<util::first_template_arg_v<T>> &writableData, Args ...args) {}, n_items, args...) } -> std::same_as<void>;
-    { t.tryPublish([](std::span<util::first_template_arg_v<T>> &writableData, Args ...args){}, n_items, args...) } -> std::same_as<bool>;
+    { t.publish([](std::span<util::value_type_t<T>> &writableData, Args ...args) {}, n_items, args...) } -> std::same_as<void>;
+    { t.tryPublish([](std::span<util::value_type_t<T>> &writableData, Args ...args){}, n_items, args...) } -> std::same_as<bool>;
     { t.available() }         -> std::same_as<std::size_t>;
 };
 
