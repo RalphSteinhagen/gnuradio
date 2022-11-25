@@ -45,7 +45,7 @@ public:
         return std::atomic_load_explicit(&_fieldsValue, std::memory_order_acquire);
     }
 
-    forceinline void setValue(std::int64_t value) noexcept
+    forceinline void setValue(const std::int64_t value) noexcept
     {
         std::atomic_store_explicit(&_fieldsValue, value, std::memory_order_release);
     }

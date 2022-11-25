@@ -1,0 +1,79 @@
+module: blocks
+block: data_sink
+label: Data Sink
+blocktype: sync_block
+category: '[Core]/Misc'
+
+typekeys:
+  - id: T
+    type: class
+    options:
+#      - cf64
+      - cf32
+      - rf64
+      - rf32
+      - ri32
+      - ri16
+      - ru8
+
+parameters:
+  - id: vlen
+    label: Vector Length
+    dtype: size
+    settable: false
+    gettable: true
+    default: 1
+  - id: num_inputs
+    label: Num Inputs
+    dtype: size
+    settable: false
+    default: 1
+    grc:
+      hide: part
+  - id: signal_rate
+    label: Signal Sampling Rate
+    dtype: ru32
+    gettable: true
+    settable: true
+    default: 0
+
+  - id: signal_name
+    label: Signal Name
+    dtype: string
+    gettable: true
+    settable: true
+    default: "\"unknown signal\""
+
+  - id: signal_unit
+    label: Signal Physical Unit
+    dtype: string
+    gettable: true
+    settable: true
+    default: "\"a.u.\""
+
+  - id: reserve_items
+    label: Reserve Items
+    dtype: size
+    settable: false
+    default: 1024
+    grc:
+      hide: part
+  - id: ok_to_block
+    label: OK to Block
+    dtype: bool
+    settable: false
+    default: 'false'
+
+ports:
+  - domain: stream
+    id: in
+    direction: input
+    type: typekeys/T
+    shape: parameters/vlen
+    multiplicity: parameters/num_inputs
+
+implementations:
+  - id: cpu
+# -   id: cuda
+
+file_format: 1
