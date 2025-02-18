@@ -71,6 +71,7 @@ add_library(
     msg_queue.cc
     pagesize.cc
     pdu.cc
+    pmt_fmt.cc
     prefs.cc
     realtime.cc
     realtime_impl.cc
@@ -81,6 +82,7 @@ add_library(
     sync_decimator.cc
     sync_interpolator.cc
     sys_paths.cc
+    tag_fmt.cc
     tagged_stream_block.cc
     terminate_handler.cc
     top_block.cc
@@ -325,6 +327,7 @@ if(ENABLE_TESTING)
         qa_logger.cc
         qa_dictionary_logger.cc
         qa_host_buffer.cc
+        qa_tags.cc
         qa_vmcircbuf.cc)
     list(APPEND GR_TEST_TARGET_DEPS gnuradio-runtime gnuradio-pmt)
 

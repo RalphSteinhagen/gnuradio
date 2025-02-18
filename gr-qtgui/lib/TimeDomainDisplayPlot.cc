@@ -155,7 +155,7 @@ TimeDomainDisplayPlot::~TimeDomainDisplayPlot()
 
 void TimeDomainDisplayPlot::replot() { QwtPlot::replot(); }
 
-void TimeDomainDisplayPlot::plotNewData(const std::vector<double*> dataPoints,
+void TimeDomainDisplayPlot::plotNewData(const std::vector<const double*> dataPoints,
                                         const int64_t numDataPoints,
                                         const double timeInterval,
                                         const std::vector<std::vector<gr::tag_t>>& tags)
@@ -488,14 +488,14 @@ void TimeDomainDisplayPlot::enableTagMarker(unsigned int which, bool en)
             "TimeDomainDisplayPlot: enabled tag marker does not exist.");
 }
 
-const QColor TimeDomainDisplayPlot::getTagTextColor() { return d_tag_text_color; }
+const QColor TimeDomainDisplayPlot::getTagTextColor() const { return d_tag_text_color; }
 
-const QColor TimeDomainDisplayPlot::getTagBackgroundColor()
+const QColor TimeDomainDisplayPlot::getTagBackgroundColor() const
 {
     return d_tag_background_color;
 }
 
-const Qt::BrushStyle TimeDomainDisplayPlot::getTagBackgroundStyle()
+Qt::BrushStyle TimeDomainDisplayPlot::getTagBackgroundStyle() const
 {
     return d_tag_background_style;
 }

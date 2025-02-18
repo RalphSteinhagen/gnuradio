@@ -94,11 +94,7 @@ freq_sink_f_impl::freq_sink_f_impl(int fftsize,
     set_trigger_mode(TRIG_MODE_FREE, 0, 0);
 }
 
-freq_sink_f_impl::~freq_sink_f_impl()
-{
-    if (!d_main_gui->isClosed())
-        d_main_gui->close();
-}
+freq_sink_f_impl::~freq_sink_f_impl() { QMetaObject::invokeMethod(d_main_gui, "close"); }
 
 bool freq_sink_f_impl::check_topology(int ninputs, int noutputs)
 {
@@ -504,6 +500,12 @@ void freq_sink_f_impl::_test_trigger_norm(int nitems,
         d_triggered = true;
         d_trigger_count = 0;
     }
+}
+
+bool freq_sink_f_impl::start()
+{
+    set_output_multiple(d_fftsize);
+    return true;
 }
 
 int freq_sink_f_impl::work(int noutput_items,

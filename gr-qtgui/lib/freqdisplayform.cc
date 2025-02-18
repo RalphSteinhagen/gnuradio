@@ -210,6 +210,9 @@ void FreqDisplayForm::setupControlPanel()
     d_controlpanel->toggleMaxHold(d_maxhold_act->isChecked());
     d_controlpanel->toggleMinHold(d_minhold_act->isChecked());
     d_controlpanel->setFFTAverage(getFFTAverage());
+    if (d_stop_state) {
+        d_controlpanel->toggleStopButton();
+    }
 
     emit signalFFTSize(getFFTSize());
     emit signalFFTWindow(getFFTWindowType());
@@ -232,8 +235,8 @@ FrequencyDisplayPlot* FreqDisplayForm::getPlot()
 
 void FreqDisplayForm::newData(const QEvent* updateEvent)
 {
-    FreqUpdateEvent* fevent = (FreqUpdateEvent*)updateEvent;
-    const std::vector<double*> dataPoints = fevent->getPoints();
+    const FreqUpdateEvent* fevent = (const FreqUpdateEvent*)updateEvent;
+    const std::vector<const double*> dataPoints = fevent->getPoints();
     const uint64_t numDataPoints = fevent->getNumDataPoints();
 
     getPlot()->plotNewData(dataPoints, numDataPoints, 0, 0, 0, d_update_time);
