@@ -405,10 +405,8 @@ asserts:
 
 templates:
     imports: |-
-        from PyQt5 import Qt
-        from gnuradio import qtgui
-        from gnuradio.filter import firdes
         import sip
+
     callbacks:
     - set_frequency_range(${fc}, ${bw})
     - set_update_time(${update_time})
@@ -468,7 +466,7 @@ templates:
         ${ gui_hint() % win}
 
 cpp_templates:
-    includes: ['#include <gnuradio/qtgui/${type.fcn}.h>', '#include <gnuradio/filter/firdes.h>']
+    includes: ['#include <gnuradio/qtgui/${type.fcn}.h>']
     declarations: 'qtgui::${type.fcn}::sptr ${id};'
     callbacks:
     - set_frequency_range(${fc}, ${bw})
@@ -485,7 +483,7 @@ cpp_templates:
             ${wintype.cpp_opts}, // wintype
             ${fc}, // fc
             ${bw}, // bw
-            "${no_quotes(name)}", // name
+            ${name}, // name
             ${ 0 if (type == 'msg_complex' or type == 'msg_float') else nconnections } // nconnections
         );
 
@@ -531,10 +529,6 @@ cpp_templates:
         _${id}_win = this->${id}->qwidget();
 
         ${gui_hint() % win}
-
-    translations:
-        'True': 'true'
-        'False': 'false'
 
 documentation: |-
     The GUI hint can be used to position the widget within the application. The hint is of the form [tab_id@tab_index]: [row, col, row_span, col_span]. Both the tab specification and the grid position are optional.

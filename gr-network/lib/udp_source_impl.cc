@@ -99,10 +99,17 @@ udp_source_impl::udp_source_impl(size_t itemsize,
             "least 8 bytes once header/trailer adjustments are made.");
     }
 
-    d_precomp_data_size = d_payloadsize - d_header_size;
-    d_precomp_data_over_item_size = d_precomp_data_size / d_itemsize;
+    if (d_payloadsize % d_block_size) {
+        d_logger->error("Payload size must be a multiple of item size * vector length.");
 
-    int out_multiple = (d_payloadsize - d_header_size) / d_block_size;
+        throw std::invalid_argument(
+            "Payload size must be a multiple of item size * vector length.");
+    }
+
+    d_precomp_data_size = d_payloadsize - d_header_size;
+    d_precomp_data_over_item_size = d_precomp_data_size / d_block_size;
+
+    int out_multiple = d_precomp_data_over_item_size;
 
     if (out_multiple == 1)
         out_multiple = 2; // Ensure we get pairs, for instance complex -> ichar pairs
@@ -153,10 +160,9 @@ bool udp_source_impl::stop()
 {
     if (d_udpsocket) {
         d_udpsocket->close();
+        delete d_udpsocket;
+        d_udpsocket = nullptr;
 
-        d_udpsocket = NULL;
-
-        d_io_context.reset();
         d_io_context.stop();
     }
 
@@ -251,7 +257,7 @@ int udp_source_impl::work(int noutput_items,
         }
     }
 
-    int bytes_read;
+    size_t bytes_read;
 
     // we could get here even if no data was received but there's still data in
     // the queue. however read blocks so we want to make sure we have data before
@@ -268,16 +274,16 @@ int udp_source_impl::work(int noutput_items,
             // Get the data and add it to our local queue.  We have to maintain a
             // local queue in case we read more bytes than noutput_items is asking
             // for.  In that case we'll only return noutput_items bytes
-            const char* read_data = asio::buffer_cast<const char*>(d_read_buffer.data());
+            const char* read_data = static_cast<const char*>(d_read_buffer.data().data());
 
             // Discard bytes if the input is longer than the buffer
-            long overrun = bytes_read - d_localqueue_writer->bufsize();
-            if (overrun > 0) {
+            if (bytes_read > d_localqueue_writer->bufsize()) {
+                size_t overrun = bytes_read - d_localqueue_writer->bufsize();
                 bytes_read -= overrun;
                 read_data += overrun;
             }
 
-            if (d_localqueue_writer->space_available() < bytes_read)
+            if ((size_t)d_localqueue_writer->space_available() < bytes_read)
                 d_localqueue_reader->update_read_pointer(
                     bytes_read - d_localqueue_writer->space_available());
             memcpy(d_localqueue_writer->write_pointer(), read_data, bytes_read);

@@ -27,13 +27,6 @@
 
 namespace gr {
 
-
-// 32Kbyte buffer size between blocks
-#define GR_FIXED_BUFFER_SIZE (32 * (1L << 10))
-
-static const unsigned int s_fixed_buffer_size =
-    prefs::singleton()->get_long("DEFAULT", "buffer_size", GR_FIXED_BUFFER_SIZE);
-
 flat_flowgraph_sptr make_flat_flowgraph()
 {
     return flat_flowgraph_sptr(new flat_flowgraph());
@@ -368,7 +361,7 @@ void flat_flowgraph::setup_buffer_alignment(block_sptr block)
 {
     const int alignment = volk_get_alignment();
     for (int i = 0; i < block->detail()->ninputs(); i++) {
-        void* r = (void*)block->detail()->input(i)->read_pointer();
+        const void* r = (const void*)block->detail()->input(i)->read_pointer();
         uintptr_t ri = (uintptr_t)r % alignment;
         // std::cerr << "reader: " << r << "  alignment: " << ri << std::endl;
         if (ri != 0) {
@@ -486,7 +479,6 @@ void flat_flowgraph::replace_endpoint(const msg_endpoint& e,
                                       const msg_endpoint& r,
                                       bool is_src)
 {
-    size_t n_replr(0);
     d_debug_logger->debug("flat_flowgraph::replace_endpoint( {}, {}, {:d} )\n",
                           e.block()->identifier(),
                           r.block()->identifier(),
@@ -499,7 +491,6 @@ void flat_flowgraph::replace_endpoint(const msg_endpoint& e,
                     r.identifier(),
                     d_msg_edges[i].dst().identifier());
                 d_msg_edges.push_back(msg_edge(r, d_msg_edges[i].dst()));
-                n_replr++;
             }
         } else {
             if (d_msg_edges[i].dst() == e) {
@@ -508,7 +499,6 @@ void flat_flowgraph::replace_endpoint(const msg_endpoint& e,
                     r.identifier(),
                     d_msg_edges[i].src().identifier());
                 d_msg_edges.push_back(msg_edge(d_msg_edges[i].src(), r));
-                n_replr++;
             }
         }
     }
