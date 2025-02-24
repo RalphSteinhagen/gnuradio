@@ -15,6 +15,7 @@ import warnings
 from optparse import OptionParser
 
 from gnuradio import filter, fft
+from .CustomViewBox import CustomViewBox
 
 try:
     import numpy as np
@@ -1060,7 +1061,7 @@ class gr_plot_filter(QtWidgets.QMainWindow):
             return
 
         # Set Data.
-        if(type(self.taps[0]) == scipy.complex128):
+        if(type(self.taps[0]) == np.cdouble):
             self.rcurve.setData(np.arange(ntaps), self.taps.real)
             self.icurve.setData(np.arange(ntaps), self.taps.imag)
         else:
@@ -1068,7 +1069,7 @@ class gr_plot_filter(QtWidgets.QMainWindow):
             self.icurve.setData([], [])
 
         if self.mttaps:
-            if(type(self.taps[0]) == scipy.complex128):
+            if(type(self.taps[0]) == np.cdouble):
                 self.mtimecurve_stems.setData(np.repeat(np.arange(ntaps), 2),
                                               np.dstack((np.zeros(self.taps.real.shape[0], dtype=int),
                                                          self.taps.real)).flatten())
@@ -1114,7 +1115,7 @@ class gr_plot_filter(QtWidgets.QMainWindow):
         else:
             stepres = self.step_response(self.taps)
 
-        if(type(stepres[0]) == np.complex128):
+        if(type(stepres[0]) == np.cdouble):
             self.steprescurve_stems.setData(np.repeat(np.arange(ntaps), 2),
                                             np.dstack((np.zeros(stepres.real.shape[0], dtype=int),
                                                        stepres.real)).flatten())
@@ -1136,7 +1137,7 @@ class gr_plot_filter(QtWidgets.QMainWindow):
             self.steprescurve_i.setData([], [])
 
         if self.mtstep:
-            if(type(stepres[0]) == np.complex128):
+            if(type(stepres[0]) == np.cdouble):
                 self.mtimecurve_stems.setData(np.repeat(np.arange(ntaps), 2),
                                               np.dstack((np.zeros(stepres.real.shape[0], dtype=int),
                                                          stepres.real)).flatten())
@@ -1181,7 +1182,7 @@ class gr_plot_filter(QtWidgets.QMainWindow):
         else:
             impres = self.impulse_response(self.taps)
 
-        if(type(impres[0]) == np.complex128):
+        if(type(impres[0]) == np.cdouble):
             self.imprescurve_stems.setData(np.repeat(np.arange(ntaps), 2),
                                            np.dstack((np.zeros(impres.real.shape[0], dtype=int),
                                                       impres.real)).flatten())
@@ -1199,7 +1200,7 @@ class gr_plot_filter(QtWidgets.QMainWindow):
                                                       impres)).flatten())
 
         if self.mtimpulse:
-            if(type(impres[0]) == np.complex128):
+            if(type(impres[0]) == np.cdouble):
                 self.mtimecurve_stems.setData(np.repeat(np.arange(ntaps), 2),
                                               np.dstack((np.zeros(impres.real.shape[0], dtype=int),
                                                          impres.real)).flatten())
@@ -2334,23 +2335,6 @@ class gr_plot_filter(QtWidgets.QMainWindow):
             self.update_imp_curves()
 
         self.gui.nTapsEdit.setText(str(self.taps.size))
-
-
-class CustomViewBox(pg.ViewBox):
-    def __init__(self, *args, **kwds):
-        pg.ViewBox.__init__(self, *args, **kwds)
-        self.setMouseMode(self.RectMode)
-
-    # Reimplement right-click to zoom out.
-    def mouseClickEvent(self, ev):
-        if ev.button() == QtCore.Qt.RightButton:
-            self.autoRange()
-
-    def mouseDragEvent(self, ev):
-        if ev.button() == QtCore.Qt.RightButton:
-            ev.ignore()
-        else:
-            pg.ViewBox.mouseDragEvent(self, ev)
 
 
 def setup_options():

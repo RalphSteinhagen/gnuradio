@@ -90,6 +90,7 @@
   - blocks_msg_meta_to_pair
 - Misc:
   - blocks_throttle
+  - blocks_throttle2
   - blocks_vector_source_x
   - blocks_head
   - blocks_skiphead
@@ -134,6 +135,7 @@
   - blocks_stretch_ff
   - blocks_blockinterleaver_xx
 - Stream Tag Tools:
+  - blocks_burst_to_stream
   - blocks_tag_debug
   - blocks_tag_gate
   - blocks_tag_share

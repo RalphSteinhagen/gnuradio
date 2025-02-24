@@ -59,7 +59,7 @@ private:
     int d_argc = 1;
     char* d_argv = &d_zero;
     QWidget* d_parent;
-    FreqDisplayForm* d_main_gui = nullptr;
+    QPointer<FreqDisplayForm> d_main_gui;
 
     gr::high_res_timer_type d_update_time;
     gr::high_res_timer_type d_last_time;
@@ -166,6 +166,7 @@ public:
     int work(int noutput_items,
              gr_vector_const_void_star& input_items,
              gr_vector_void_star& output_items) override;
+    bool start() override;
 };
 
 } /* namespace qtgui */

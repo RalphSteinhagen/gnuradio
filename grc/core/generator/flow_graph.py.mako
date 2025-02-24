@@ -21,23 +21,13 @@
 # GNU Radio version: ${version}
 ##################################################
 
-% if generate_options == 'qt_gui':
-from packaging.version import Version as StrictVersion
-
-if __name__ == '__main__':
-    import ctypes
-    import sys
-    if sys.platform.startswith('linux'):
-        try:
-            x11 = ctypes.cdll.LoadLibrary('libX11.so')
-            x11.XInitThreads()
-        except:
-            print("Warning: failed to XInitThreads()")
-
-% endif
 ########################################################
 ##Create Imports
 ########################################################
+% if generate_options in ['qt_gui','hb_qt_gui']:
+from PyQt5 import Qt
+from gnuradio import qtgui
+%endif
 % for imp in imports:
 ##${imp.replace("  # grc-generated hier_block", "")}
 ${imp}
@@ -82,8 +72,6 @@ def snippets_${section}(tb):
     param_str = ', '.join(['self'] + ['%s=%s'%(param.name, param.templates.render('make')) for param in parameters])
 %>\
 % if generate_options == 'qt_gui':
-from gnuradio import qtgui
-
 class ${class_name}(gr.top_block, Qt.QWidget):
 
     def __init__(${param_str}):
@@ -93,8 +81,8 @@ class ${class_name}(gr.top_block, Qt.QWidget):
         qtgui.util.check_set_qss()
         try:
             self.setWindowIcon(Qt.QIcon.fromTheme('gnuradio-grc'))
-        except:
-            pass
+        except BaseException as exc:
+            print(f"Qt GUI: Could not set Icon: {str(exc)}", file=sys.stderr)
         self.top_scroll_layout = Qt.QVBoxLayout()
         self.setLayout(self.top_scroll_layout)
         self.top_scroll = Qt.QScrollArea()
@@ -107,15 +95,14 @@ class ${class_name}(gr.top_block, Qt.QWidget):
         self.top_grid_layout = Qt.QGridLayout()
         self.top_layout.addLayout(self.top_grid_layout)
 
-        self.settings = Qt.QSettings("GNU Radio", "${class_name}")
+        self.settings = Qt.QSettings("gnuradio/flowgraphs", "${class_name}")
 
         try:
-            if StrictVersion(Qt.qVersion()) < StrictVersion("5.0.0"):
-                self.restoreGeometry(self.settings.value("geometry").toByteArray())
-            else:
-                self.restoreGeometry(self.settings.value("geometry"))
-        except:
-            pass
+            geometry = self.settings.value("geometry")
+            if geometry:
+                self.restoreGeometry(geometry)
+        except BaseException as exc:
+            print(f"Qt GUI: Could not restore geometry: {str(exc)}", file=sys.stderr)
 % elif generate_options == 'bokeh_gui':
 
 class ${class_name}(gr.top_block):
@@ -173,6 +160,9 @@ gr.io_signature.makev(${len(io_sigs)}, ${len(io_sigs)}, [${', '.join(size_strs)}
 % if flow_graph.get_option('thread_safe_setters'):
 
         self._lock = threading.RLock()
+% endif
+% if not generate_options.startswith('hb'):
+        self.flowgraph_started = threading.Event()
 % endif
 ########################################################
 ##Create Parameters
@@ -240,7 +230,7 @@ gr.io_signature.makev(${len(io_sigs)}, ${len(io_sigs)}, [${', '.join(size_strs)}
 % if generate_options == 'qt_gui':
 
     def closeEvent(self, event):
-        self.settings = Qt.QSettings("GNU Radio", "${class_name}")
+        self.settings = Qt.QSettings("gnuradio/flowgraphs", "${class_name}")
         self.settings.setValue("geometry", self.saveGeometry())
         self.stop()
         self.wait()
@@ -256,7 +246,7 @@ gr.io_signature.makev(${len(io_sigs)}, ${len(io_sigs)}, [${', '.join(size_strs)}
             with open(filename) as ss:
                 self.setStyleSheet(ss.read())
         except Exception as e:
-            print(e, file=sys.stderr)
+            self.logger.error(f"setting stylesheet: {str(e)}")
     % endif
 % endif
 ##
@@ -338,19 +328,17 @@ def main(top_block_cls=${class_name}, options=None):
     % endif
     % if flow_graph.get_option('realtime_scheduling'):
     if gr.enable_realtime_scheduling() != gr.RT_OK:
-        print("Error: failed to enable real-time scheduling.")
+        gr.logger("realtime").warn("Error: failed to enable real-time scheduling.")
     % endif
     % if generate_options == 'qt_gui':
 
-    if StrictVersion("4.5.0") <= StrictVersion(Qt.qVersion()) < StrictVersion("5.0.0"):
-        style = gr.prefs().get_string('qtgui', 'style', 'raster')
-        Qt.QApplication.setGraphicsSystem(style)
     qapp = Qt.QApplication(sys.argv)
 
     tb = top_block_cls(${ ', '.join(params_eq_list) })
     ${'snippets_main_after_init(tb)' if snippets['main_after_init'] else ''}
     % if flow_graph.get_option('run'):
     tb.start(${flow_graph.get_option('max_nouts') or ''})
+    tb.flowgraph_started.set()
     % endif
     ${'snippets_main_after_start(tb)' if snippets['main_after_start'] else ''}
     % if flow_graph.get_option('qt_qss_theme'):
@@ -383,10 +371,11 @@ def main(top_block_cls=${class_name}, options=None):
     ${'snippets_main_after_init(tb)' if snippets['main_after_init'] else ''}
     try:
         tb.start()
+        tb.flowgraph_started.set()
         ${'snippets_main_after_start(tb)' if snippets['main_after_start'] else ''}
         bokehgui.utils.run_server(tb, sizing_mode = "${flow_graph.get_option('sizing_mode')}",  widget_placement =  ${flow_graph.get_option('placement')}, window_size =  ${flow_graph.get_option('window_size')})
     finally:
-        print("Exiting the simulation. Stopping Bokeh Server")
+        tb.logger.info("Exiting the simulation. Stopping Bokeh Server")
         tb.stop()
         tb.wait()
         ${'snippets_main_after_stop(tb)' if snippets['main_after_stop'] else ''}
@@ -409,6 +398,7 @@ def main(top_block_cls=${class_name}, options=None):
 
     % if flow_graph.get_option('run_options') == 'prompt':
     tb.start(${ flow_graph.get_option('max_nouts') or '' })
+    tb.flowgraph_started.set()
     ${'snippets_main_after_start(tb)' if snippets['main_after_start'] else ''}
     % for m in monitors:
     % if m.params['en'].get_value() == 'True':
@@ -423,6 +413,7 @@ def main(top_block_cls=${class_name}, options=None):
     ## ${'snippets_main_after_stop(tb)' if snippets['main_after_stop'] else ''}
     % elif flow_graph.get_option('run_options') == 'run':
     tb.start(${flow_graph.get_option('max_nouts') or ''})
+    tb.flowgraph_started.set()
     ${'snippets_main_after_start(tb)' if snippets['main_after_start'] else ''}
     % for m in monitors:
     % if m.params['en'].get_value() == 'True':
