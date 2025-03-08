@@ -38,7 +38,7 @@ public:
                  const size_t src_block_port,
                  const std::string& dst_block_id,
                  const size_t dst_block_port,
-                 const bool skip_property_propagation) override
+                 const bool is_back_edge) override
     {
         d_logger->debug("Connecting {:s}:{:d} -> {:s}:{:d}",
                         src_block_id,
@@ -49,6 +49,14 @@ public:
             if (_rx_streamers.count(dst_block_id)) {
                 throw std::runtime_error("Cannot connect RFNoC streamers directly!");
             }
+            if (is_back_edge) {
+                d_logger->warn("Back edge detected between streamer {:s}:{:d} and block "
+                               "{:s}:{:d}! Ignoring.",
+                               src_block_id,
+                               src_block_port,
+                               dst_block_id,
+                               dst_block_port);
+            }
             _graph->connect(_tx_streamers.at(src_block_id),
                             src_block_port,
                             block_id_t(dst_block_id),
@@ -57,6 +65,14 @@ public:
             return;
         }
         if (_rx_streamers.count(dst_block_id)) {
+            if (is_back_edge) {
+                d_logger->warn("Back edge detected between block {:s}:{:d} and streamer "
+                               "{:s}:{:d}! Ignoring.",
+                               src_block_id,
+                               src_block_port,
+                               dst_block_id,
+                               dst_block_port);
+            }
             _graph->connect(src_block_id,
                             src_block_port,
                             _rx_streamers.at(dst_block_id),
@@ -68,27 +84,28 @@ public:
         _graph->connect(block_id_t(src_block_id),
                         src_block_port,
                         block_id_t(dst_block_id),
-                        dst_block_port);
+                        dst_block_port,
+                        is_back_edge);
     }
 
     void connect(const std::string& block1,
                  const std::string& block2,
-                 bool skip_property_propagation) override
+                 bool is_back_edge) override
     {
-        connect(block1, 0, block2, 0, skip_property_propagation);
+        connect(block1, 0, block2, 0, is_back_edge);
     }
 
     void connect(rfnoc_block::sptr src_block,
                  const size_t src_block_port,
                  rfnoc_block::sptr dst_block,
                  const size_t dst_block_port,
-                 const bool skip_property_propagation)
+                 const bool is_back_edge)
     {
         connect(src_block->get_unique_id(),
                 src_block_port,
                 dst_block->get_unique_id(),
                 dst_block_port,
-                skip_property_propagation);
+                is_back_edge);
     }
 
 

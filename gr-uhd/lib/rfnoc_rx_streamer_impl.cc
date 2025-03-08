@@ -12,6 +12,7 @@
 
 #include "gr_uhd_common.h"
 #include "rfnoc_rx_streamer_impl.h"
+#include <gnuradio/high_res_timer.h>
 #include <gnuradio/io_signature.h>
 #include <uhd/convert.hpp>
 #include <uhd/rfnoc/node.hpp>
@@ -31,10 +32,17 @@ rfnoc_rx_streamer::sptr rfnoc_rx_streamer::make(rfnoc_graph::sptr graph,
                                                 const size_t num_chans,
                                                 const ::uhd::stream_args_t& stream_args,
                                                 const size_t vlen,
-                                                const bool issue_stream_cmd_on_start)
+                                                const bool issue_stream_cmd_on_start,
+                                                const bool start_time_set,
+                                                const ::uhd::time_spec_t& start_time)
 {
-    return gnuradio::make_block_sptr<rfnoc_rx_streamer_impl>(
-        graph, num_chans, stream_args, vlen, issue_stream_cmd_on_start);
+    return gnuradio::make_block_sptr<rfnoc_rx_streamer_impl>(graph,
+                                                             num_chans,
+                                                             stream_args,
+                                                             vlen,
+                                                             issue_stream_cmd_on_start,
+                                                             start_time_set,
+                                                             start_time);
 }
 
 
@@ -42,7 +50,9 @@ rfnoc_rx_streamer_impl::rfnoc_rx_streamer_impl(rfnoc_graph::sptr graph,
                                                const size_t num_chans,
                                                const ::uhd::stream_args_t& stream_args,
                                                const size_t vlen,
-                                               const bool issue_stream_cmd_on_start)
+                                               const bool issue_stream_cmd_on_start,
+                                               const bool start_time_set,
+                                               const ::uhd::time_spec_t& start_time)
     : gr::sync_block(
           "rfnoc_rx_streamer",
           gr::io_signature::make(0, 0, 0),
@@ -57,7 +67,9 @@ rfnoc_rx_streamer_impl::rfnoc_rx_streamer_impl(rfnoc_graph::sptr graph,
       d_streamer(graph->create_rx_streamer(num_chans, stream_args)),
       d_unique_id(
           std::dynamic_pointer_cast<::uhd::rfnoc::node_t>(d_streamer)->get_unique_id()),
-      d_issue_stream_cmd_on_start(issue_stream_cmd_on_start)
+      d_issue_stream_cmd_on_start(issue_stream_cmd_on_start),
+      d_start_time_set(start_time_set),
+      d_start_time(start_time)
 {
     // nop
 }
@@ -142,7 +154,7 @@ int rfnoc_rx_streamer_impl::work(int noutput_items,
     default:
         d_logger->warn("RFNoC Streamer block received error {:s} (Code: {})",
                        d_metadata.strerror(),
-                       d_metadata.error_code);
+                       static_cast<int>(d_metadata.error_code));
     }
 
     if (d_metadata.end_of_burst) {
@@ -178,12 +190,16 @@ void rfnoc_rx_streamer_impl::flush()
     }
 
     const size_t itemsize = output_signature()->sizeof_stream_item(0);
-    while (true) {
+    // If we don't get an error, time out after 2 seconds
+    gr::high_res_timer_type end_time =
+        gr::high_res_timer_now() + gr::high_res_timer_tps() * 2;
+    while (gr::high_res_timer_now() < end_time) {
         d_streamer->recv(outputs, nbytes / itemsize / d_vlen, d_metadata, 0.0);
         if (d_metadata.error_code != ::uhd::rx_metadata_t::ERROR_CODE_NONE) {
-            break;
+            return;
         }
     }
+    d_logger->warn("Streamer timed out waiting for expected error on flush");
 }
 
 } /* namespace uhd */

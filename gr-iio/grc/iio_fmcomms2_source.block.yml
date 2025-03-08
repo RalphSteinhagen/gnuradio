@@ -7,7 +7,7 @@ parameters:
     label: Output Type
     dtype: enum
     options: [fc32, sc16]
-    option_labels: [int16, Complex float32, Complex int16]
+    option_labels: [Complex float32, Complex int16]
     option_attributes:
         type: [fc32, sc16]
     hide: part
@@ -182,8 +182,8 @@ templates:
         - set_samplerate(${samplerate})
         - set_gain_mode(0, ${gain1})
         - set_gain(0, ${manual_gain1})
-        - set_gain_mode(1, ${gain1})
-        - set_gain(1, ${manual_gain1})
+        - set_gain_mode(1, ${gain2})
+        - set_gain(1, ${manual_gain2})
         - set_quadrature(${quadrature})
         - set_rfdc(${rfdc})
         - set_bbdc(${bbdc})
