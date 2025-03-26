@@ -16,7 +16,7 @@ from shutil import which as find_executable
 from gi.repository import GLib
 
 from ..core import Messages
-from . import Utils
+from ..core.utils.system import get_cmake_nproc
 
 
 class ExecFlowGraphThread(threading.Thread):
@@ -59,7 +59,7 @@ class ExecFlowGraphThread(threading.Thread):
             if ('gnome-terminal' in xterm_executable):
                 run_command_args = [xterm_executable, '--'] + run_command_args
             else:
-                run_command_args = [xterm_executable, '-e', run_command]
+                run_command_args = [xterm_executable, '-e'] + run_command_args
 
         # this does not reproduce a shell executable command string, if a graphical
         # terminal is used. Passing run_command though shlex_quote would do it but
@@ -91,7 +91,7 @@ class ExecFlowGraphThread(threading.Thread):
 
         xterm_executable = find_executable(self.xterm_executable)
 
-        nproc = Utils.get_cmake_nproc()
+        nproc = get_cmake_nproc()
 
         run_command_args = f'cmake .. && cmake --build . -j{nproc} && cd ../.. && {xterm_executable} -e {run_command}'
         Messages.send_start_exec(run_command_args)
