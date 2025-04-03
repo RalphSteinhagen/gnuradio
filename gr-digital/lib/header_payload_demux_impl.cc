@@ -436,15 +436,11 @@ void header_payload_demux_impl::parse_header_data_msg(pmt::pmt_t header_data)
             d_curr_payload_len = 0;
             d_state = STATE_HEADER_RX_FAIL;
         }
-        if ((d_curr_payload_len * (d_output_symbols ? 1 : d_items_per_symbol)) >
-            max_output_buffer(1) / 2) {
-            d_state = STATE_HEADER_RX_FAIL;
-            d_logger->info("Detected a packet larger than max frame size ({:d} symbols)",
-                           d_curr_payload_len);
-        } else {
-            set_min_noutput_items(d_curr_payload_len *
-                                  (d_output_symbols ? 1 : d_items_per_symbol));
-        }
+        // Note: check for d_curr_payload_len too large requires a max len to
+        // be set in the block, and for the block to set its min output buffer
+        // size accordingly. There is currently no "max payload len" param.
+        set_min_noutput_items(d_curr_payload_len *
+                              (d_output_symbols ? 1 : d_items_per_symbol));
     }
 } /* parse_header_data_msg() */
 
@@ -462,14 +458,14 @@ void header_payload_demux_impl::copy_n_symbols(const unsigned char* in,
         // because all padding items will be part of n_symbols
         for (int i = 0; i < n_symbols; i++) {
             memcpy((void*)out,
-                   (void*)(in + d_gi * d_itemsize),
+                   (const void*)(in + d_gi * d_itemsize),
                    d_items_per_symbol * d_itemsize);
             in += d_itemsize * (d_items_per_symbol + d_gi);
             out += d_itemsize * d_items_per_symbol;
         }
     } else {
         memcpy((void*)out,
-               (void*)in,
+               (const void*)in,
                (n_symbols * d_items_per_symbol + n_padding_items) * d_itemsize);
     }
     // Copy tags

@@ -1,6 +1,7 @@
 /* -*- c++ -*- */
 /*
  * Copyright 2006,2009,2010 Free Software Foundation, Inc.
+ * Copyright 2022 Marcus Müller
  *
  * This file is part of GNU Radio
  *
@@ -8,14 +9,11 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "pmt_int.h"
 #include <gnuradio/messages/msg_accepter.h>
 #include <pmt/pmt.h>
 #include <pmt/pmt_pool.h>
+#include <string_view>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
@@ -136,26 +134,22 @@ bool to_bool(pmt_t val)
 //                             Symbols
 ////////////////////////////////////////////////////////////////////////////
 
-static const unsigned int get_symbol_hash_table_size()
-{
-    static const unsigned int SYMBOL_HASH_TABLE_SIZE = 8192;
-    return SYMBOL_HASH_TABLE_SIZE;
-}
+constexpr size_t SYMBOL_HASH_TABLE_SIZE = 8192;
 
 static std::vector<pmt_t>* get_symbol_hash_table()
 {
-    static std::vector<pmt_t> s_symbol_hash_table(get_symbol_hash_table_size());
+    static std::vector<pmt_t> s_symbol_hash_table(SYMBOL_HASH_TABLE_SIZE);
     return &s_symbol_hash_table;
 }
 
-pmt_symbol::pmt_symbol(const std::string& name) : d_name(name) {}
+pmt_symbol::pmt_symbol(std::string_view name) : d_name(name) {}
 
 
 bool is_symbol(const pmt_t& obj) { return obj->is_symbol(); }
 
-pmt_t string_to_symbol(const std::string& name)
+pmt_t string_to_symbol(std::string_view name)
 {
-    unsigned hash = std::hash<std::string>()(name) % get_symbol_hash_table_size();
+    unsigned hash = std::hash<std::string_view>{}(name) % SYMBOL_HASH_TABLE_SIZE;
 
     // Does a symbol with this name already exist?
     for (pmt_t sym = (*get_symbol_hash_table())[hash]; sym; sym = _symbol(sym)->next()) {
@@ -181,7 +175,7 @@ pmt_t string_to_symbol(const std::string& name)
 }
 
 // alias...
-pmt_t intern(const std::string& name) { return string_to_symbol(name); }
+pmt_t intern(std::string_view name) { return string_to_symbol(name); }
 
 const std::string symbol_to_string(const pmt_t& sym)
 {
@@ -888,7 +882,7 @@ bool equal(const pmt_t& x, const pmt_t& y)
         size_t len_x, len_y;
         const void* x_m = xv->uniform_elements(len_x);
         const void* y_m = yv->uniform_elements(len_y);
-        if (memcmp(x_m, y_m, len_x) == 0)
+        if ((len_x == 0) || (memcmp(x_m, y_m, len_x) == 0))
             return true;
 
         return false;

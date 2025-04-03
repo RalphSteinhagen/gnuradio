@@ -14,6 +14,7 @@ include(GrPython)
 
 find_package(Qt5 QUIET
     COMPONENTS Widgets
+    OPTIONAL_COMPONENTS OpenGL
 )
 set(QT_FOUND ${Qt5Widgets_FOUND})
 
@@ -46,7 +47,10 @@ set(GR_PKG_QTGUI_EXAMPLES_DIR ${GR_PKG_DATA_DIR}/examples/qt-gui)
 # Begin conditional configuration
 ########################################################################
 if(ENABLE_GR_QTGUI)
-
+    if (Qt5OpenGL_FOUND)
+        set(ENABLE_GR_QTGUI_OPENGL TRUE)
+        set(OpenGL_GL_PREFERENCE GLVND)
+    endif()
     ########################################################################
     # Add subdirectories
     ########################################################################
@@ -86,7 +90,12 @@ if(ENABLE_GR_QTGUI)
     ########################################################################
     # Install the themes (QSS) files
     ########################################################################
-    install(FILES themes/plain.qss themes/dark.qss themes/alt.qss themes/projector.qss
+    install(FILES
+            themes/alt.qss
+            themes/dark.qss
+            themes/nsf.qss
+            themes/plain.qss
+            themes/projector.qss
             DESTINATION ${GR_THEMES_DIR})
 
 endif(ENABLE_GR_QTGUI)

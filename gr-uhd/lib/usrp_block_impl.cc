@@ -9,10 +9,12 @@
  */
 
 #include "usrp_block_impl.h"
+#include "gnuradio/uhd/usrp_block.h"
 #include <chrono>
 #include <thread>
 
-using namespace gr::uhd;
+using gr::uhd::usrp_block;
+using gr::uhd::usrp_block_impl;
 using namespace std::chrono_literals;
 
 namespace {
@@ -119,6 +121,12 @@ const pmt::pmt_t gr::uhd::cmd_pc_clock_resync_key()
 const pmt::pmt_t gr::uhd::cmd_gpio_key()
 {
     static const pmt::pmt_t val = pmt::mp("gpio");
+    return val;
+}
+
+const pmt::pmt_t gr::uhd::cmd_stream_cmd_key()
+{
+    static const pmt::pmt_t val = pmt::mp("stream_cmd");
     return val;
 }
 

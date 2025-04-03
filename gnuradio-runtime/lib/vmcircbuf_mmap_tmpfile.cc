@@ -25,6 +25,7 @@
 #include "pagesize.h"
 #include <gnuradio/sys_paths.h>
 #include <fcntl.h>
+#include <spdlog/fmt/fmt.h>
 #include <cerrno>
 #include <cstring>
 
@@ -44,14 +45,14 @@ vmcircbuf_mmap_tmpfile::vmcircbuf_mmap_tmpfile(size_t size) : gr::vmcircbuf(size
     }
 
     int seg_fd = -1;
-    std::string seg_name;
 
     static int s_seg_counter = 0;
 
+    std::filesystem::path seg_name;
     // open a temporary file that we'll map in a bit later
     while (1) {
-        seg_name = std::string(gr::tmp_path()) + "/gnuradio-" + std::to_string(getpid()) +
-                   "-" + std::to_string(s_seg_counter) + "-XXXXXX";
+        seg_name = gr::paths::tmp() /
+                   fmt::format("gnuradio-{}-{}-XXXXXX", getpid(), s_seg_counter);
 
         s_seg_counter++;
 
@@ -60,7 +61,7 @@ vmcircbuf_mmap_tmpfile::vmcircbuf_mmap_tmpfile(size_t size) : gr::vmcircbuf(size
             if (errno == EEXIST) // File already exists (shouldn't happen).  Try again
                 continue;
 
-            d_logger->error("open [{:s}]", seg_name);
+            d_logger->error("open [{:s}]", seg_name.string());
             throw std::runtime_error("gr::vmcircbuf_mmap_tmpfile");
         }
         break;
@@ -88,19 +89,11 @@ vmcircbuf_mmap_tmpfile::vmcircbuf_mmap_tmpfile(size_t size) : gr::vmcircbuf(size
         throw std::runtime_error("gr::vmcircbuf_mmap_tmpfile");
     }
 
-    // unmap the 2nd half
-    if (munmap((char*)first_copy + size, size) == -1) {
-        close(seg_fd); // cleanup
-        d_logger->error("munmap (1) failed");
-        throw std::runtime_error("gr::vmcircbuf_mmap_tmpfile");
-    }
-
-    // map the first half into the now available hole where the
-    // second half used to be.
+    // map the first half into the second half of the address space.
     void* second_copy = mmap((char*)first_copy + size,
                              size,
                              PROT_READ | PROT_WRITE,
-                             MAP_SHARED,
+                             MAP_SHARED | MAP_FIXED,
                              seg_fd,
                              (off_t)0);
 
@@ -108,15 +101,6 @@ vmcircbuf_mmap_tmpfile::vmcircbuf_mmap_tmpfile(size_t size) : gr::vmcircbuf(size
         munmap(first_copy, size); // cleanup
         close(seg_fd);
         d_logger->error("mmap (2) failed");
-        throw std::runtime_error("gr::vmcircbuf_mmap_tmpfile");
-    }
-
-    // check for contiguity
-    if ((char*)second_copy != (char*)first_copy + size) {
-        munmap(first_copy, size); // cleanup
-        munmap(second_copy, size);
-        close(seg_fd);
-        d_logger->error("non-contiguous second copy");
         throw std::runtime_error("gr::vmcircbuf_mmap_tmpfile");
     }
 
