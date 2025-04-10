@@ -123,7 +123,7 @@ HistogramDisplayPlot::~HistogramDisplayPlot()
 
 void HistogramDisplayPlot::replot() { QwtPlot::replot(); }
 
-void HistogramDisplayPlot::plotNewData(const std::vector<double*> dataPoints,
+void HistogramDisplayPlot::plotNewData(const std::vector<const double*> dataPoints,
                                        const uint64_t numDataPoints,
                                        const double timeInterval)
 {
@@ -190,11 +190,11 @@ void HistogramDisplayPlot::_resetXAxisPoints(double left, double right)
         throw std::runtime_error("HistogramDisplayPlot::_resetXAxisPoints left and/or "
                                  "right values are invalid");
 
-    d_left = left * (1 - copysign(0.1, left));
-    d_right = right * (1 + copysign(0.1, right));
+    d_left = left;
+    d_right = right;
     d_width = (d_right - d_left) / (d_bins);
     for (unsigned int loc = 0; loc < d_bins; loc++) {
-        d_xdata[loc] = d_left + loc * d_width;
+        d_xdata[loc] = d_left + (loc + 0.5) * d_width; // center the value in each bin
     }
     QwtScaleDiv scalediv(d_left, d_right);
     setAxisScaleDiv(QwtPlot::xBottom, scalediv);
@@ -285,7 +285,7 @@ void HistogramDisplayPlot::setMarkerAlpha(unsigned int which, int alpha)
         d_plot_curve[which]->setPen(pen);
 
         // And set the new color for the markers
-        QwtSymbol* sym = (QwtSymbol*)d_plot_curve[which]->symbol();
+        QwtSymbol* sym = const_cast<QwtSymbol*>(d_plot_curve[which]->symbol());
         if (sym) {
             sym->setColor(color);
             sym->setPen(pen);
@@ -320,7 +320,7 @@ void HistogramDisplayPlot::setLineColor(unsigned int which, QColor color)
         pen.setColor(color);
         d_plot_curve[which]->setPen(pen);
 
-        QwtSymbol* sym = (QwtSymbol*)d_plot_curve[which]->symbol();
+        QwtSymbol* sym = const_cast<QwtSymbol*>(d_plot_curve[which]->symbol());
         if (sym) {
             sym->setColor(color);
             sym->setPen(pen);

@@ -256,10 +256,8 @@ inputs:
 
 templates:
     imports: |-
-        from PyQt5 import Qt
-        from gnuradio import qtgui
-        from gnuradio.filter import firdes
         import sip
+    
     callbacks:
     - set_time_domain_axis(${min}, ${max})
     - set_update_time(${update_time})
