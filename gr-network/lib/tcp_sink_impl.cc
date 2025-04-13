@@ -63,10 +63,8 @@ bool tcp_sink_impl::start()
 
         std::string s_port = std::to_string(d_port);
         asio::ip::tcp::resolver resolver(d_io_context);
-        asio::ip::tcp::resolver::query query(
-            d_host, s_port, asio::ip::resolver_query_base::passive);
-
-        d_endpoint = *resolver.resolve(query, err);
+        d_endpoint = *(
+            resolver.resolve(d_host, s_port, asio::ip::tcp::resolver::passive).cbegin());
 
         if (err) {
             throw std::runtime_error(
@@ -98,6 +96,7 @@ bool tcp_sink_impl::start()
         // In this mode, we're starting a local port listener and waiting
         // for inbound connections.
         d_start_new_listener = true;
+        d_is_ipv6 = false;
         d_listener_thread = new std::thread([this] { run_listener(); });
     }
 
@@ -158,7 +157,7 @@ void tcp_sink_impl::connect(bool initial_connection)
             d_acceptor = new asio::ip::tcp::acceptor(
                 d_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), d_port));
     } else {
-        d_io_context.reset();
+        d_io_context.restart();
     }
 
     if (d_tcpsocket) {
@@ -193,7 +192,6 @@ bool tcp_sink_impl::stop()
         d_tcpsocket = NULL;
     }
 
-    d_io_context.reset();
     d_io_context.stop();
 
     if (d_acceptor) {
@@ -202,9 +200,7 @@ bool tcp_sink_impl::stop()
     }
 
     if (d_listener_thread) {
-        while (d_thread_running)
-            std::this_thread::sleep_for(std::chrono::microseconds(5));
-
+        d_listener_thread->join();
         delete d_listener_thread;
         d_listener_thread = NULL;
     }
@@ -227,8 +223,8 @@ int tcp_sink_impl::work(int noutput_items,
 
     ec.clear();
 
-    char* p_buff;
-    p_buff = (char*)input_items[0];
+    const char* p_buff;
+    p_buff = (const char*)input_items[0];
 
     while ((bytes_remaining > 0) && (!ec)) {
         bytes_written = asio::write(

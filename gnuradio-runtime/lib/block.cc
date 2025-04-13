@@ -27,7 +27,9 @@ namespace gr {
 // 32Kbyte buffer size between blocks
 #define GR_FIXED_BUFFER_SIZE (32 * (1L << 10))
 
-static const unsigned int s_fixed_buffer_size = GR_FIXED_BUFFER_SIZE;
+static const unsigned int s_fixed_buffer_size =
+    prefs::singleton()->get_long("DEFAULT", "buffer_size", GR_FIXED_BUFFER_SIZE);
+
 
 block::block(const std::string& name,
              io_signature::sptr input_signature,
@@ -216,17 +218,12 @@ void block::add_item_tag(unsigned int which_output, const tag_t& tag)
     d_detail->add_item_tag(which_output, tag);
 }
 
-void block::remove_item_tag(unsigned int which_input, const tag_t& tag)
-{
-    d_detail->remove_item_tag(which_input, tag, unique_id());
-}
-
 void block::get_tags_in_range(std::vector<tag_t>& v,
                               unsigned int which_input,
                               uint64_t start,
                               uint64_t end)
 {
-    d_detail->get_tags_in_range(v, which_input, start, end, unique_id());
+    d_detail->get_tags_in_range(v, which_input, start, end);
 }
 
 void block::get_tags_in_range(std::vector<tag_t>& v,
@@ -235,7 +232,7 @@ void block::get_tags_in_range(std::vector<tag_t>& v,
                               uint64_t end,
                               const pmt::pmt_t& key)
 {
-    d_detail->get_tags_in_range(v, which_input, start, end, key, unique_id());
+    d_detail->get_tags_in_range(v, which_input, start, end, key);
 }
 
 void block::get_tags_in_window(std::vector<tag_t>& v,
@@ -243,11 +240,8 @@ void block::get_tags_in_window(std::vector<tag_t>& v,
                                uint64_t start,
                                uint64_t end)
 {
-    d_detail->get_tags_in_range(v,
-                                which_input,
-                                nitems_read(which_input) + start,
-                                nitems_read(which_input) + end,
-                                unique_id());
+    d_detail->get_tags_in_range(
+        v, which_input, nitems_read(which_input) + start, nitems_read(which_input) + end);
 }
 
 void block::get_tags_in_window(std::vector<tag_t>& v,
@@ -260,8 +254,26 @@ void block::get_tags_in_window(std::vector<tag_t>& v,
                                 which_input,
                                 nitems_read(which_input) + start,
                                 nitems_read(which_input) + end,
-                                key,
-                                unique_id());
+                                key);
+}
+
+std::optional<gr::tag_t>
+block::get_first_tag_in_range(unsigned which_input,
+                              uint64_t start,
+                              uint64_t end,
+                              std::function<bool(const gr::tag_t&)> predicate)
+{
+    return d_detail->get_first_tag_in_range(which_input, start, end, predicate);
+}
+
+std::optional<gr::tag_t> block::get_first_tag_in_range(unsigned which_input,
+                                                       uint64_t start,
+                                                       uint64_t end,
+                                                       const pmt::pmt_t& key)
+{
+    return get_first_tag_in_range(which_input, start, end, [key](const gr::tag_t& tag) {
+        return pmt::eqv(key, tag.key);
+    });
 }
 
 block::tag_propagation_policy_t block::tag_propagation_policy()
@@ -408,13 +420,14 @@ void block::allocate_detail(int ninputs,
 
         // Update the block's max_output_buffer based on what was actually allocated.
         if ((max_output_buffer(i) != static_cast<long>(buffer->bufsize())) &&
-            (max_output_buffer(i) != -1))
+            (max_output_buffer(i) != -1)) {
             d_logger->warn("Block ({:s}) max output buffer set to {:d}"
                            " instead of requested {:d}",
                            alias(),
                            buffer->bufsize(),
                            max_output_buffer(i));
-        set_max_output_buffer(i, buffer->bufsize());
+            set_max_output_buffer(i, buffer->bufsize());
+        }
     }
 
     // Store the block_detail that was created above

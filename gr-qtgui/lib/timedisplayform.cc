@@ -207,6 +207,9 @@ void TimeDisplayForm::setupControlPanel()
     d_controlpanel->toggleGrid(d_grid_act->isChecked());
     d_controlpanel->toggleTriggerMode(getTriggerMode());
     d_controlpanel->toggleTriggerSlope(getTriggerSlope());
+    if (d_stop_state) {
+        d_controlpanel->toggleStopButton();
+    }
 
     d_controlpanelmenu->setChecked(true);
 }
@@ -228,8 +231,8 @@ TimeDomainDisplayPlot* TimeDisplayForm::getPlot()
 
 void TimeDisplayForm::newData(const QEvent* updateEvent)
 {
-    TimeUpdateEvent* tevent = (TimeUpdateEvent*)updateEvent;
-    const std::vector<double*> dataPoints = tevent->getTimeDomainPoints();
+    const TimeUpdateEvent* tevent = (const TimeUpdateEvent*)updateEvent;
+    const std::vector<const double*> dataPoints = tevent->getTimeDomainPoints();
     const uint64_t numDataPoints = tevent->getNumTimeDomainDataPoints();
     const std::vector<std::vector<gr::tag_t>> tags = tevent->getTags();
 
