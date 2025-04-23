@@ -16,7 +16,7 @@ parser.add_argument(
     '--filename', help="File to be parsed")
 
 parser.add_argument(
-    '--defines', help='Set additional defines for precompiler', default=(), nargs='*')
+    '--defines', help='Set additional defines for preprocessor', default=(), nargs='*')
 parser.add_argument(
     '--include', help='Additional Include Dirs, separated', default=(), nargs='*')
 
@@ -34,12 +34,12 @@ args = parser.parse_args()
 
 prefix = args.prefix
 output_dir = args.output_dir
-defines = tuple(','.join(args.defines).split(','))
+defines = tuple([d for d in ','.join(args.defines).split(',') if d])
 includes = ','.join(args.include)
 name = args.module
 
 namespace = ['gr', name]
-prefix_include_root = name
+prefix_include_root = "gnuradio/" + name
 
 
 with warnings.catch_warnings():
